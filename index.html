@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aurora ISA v0.0.1a Specifications</title>
+<style type="text/css">#main{margin:40px;line-height:1.6;font-size:18px;padding:0 10px;font-family:monospace;}h1,h2,h3{line-height:1.2}hr{margin:0;}pre{white-space:pre-wrap;}h4{line-height:1.2;margin-bottom: 0.5em;}table{width: 100%;}td,table,th{border: 1px solid black;}@media only screen and (max-width: 500px){#main{margin:0;}}</style>
+</head>
+<body id="main">
+<pre><h2>Aurora ISA v0.0.1a Specifications</h2>
+Aurora is a simple RISC-based instruction set that <a href="https://masonx.ca/">ohnx</a> is developing in order to learn about ISA's and FPGA's.
+
+This is the specification sheet for version 0.0.1 alpha. Instruction codes and other behaviours for v0.0.1a are defined here.
+
+<b>Note that this document describes an alpha of Aurora. Breaking changes may be made without notice, and some items may not make sense.</b>
+
+Currently, there are no known working implementations of Aurora v0.0.1a.
+
+<hr /><h4>Contents</h4>
+1. <a href="#basic">Basic Information</a>
+2. <a href="#instructions">Instructions</a>
+3. <a href="#faults">Faults and Exceptions</a>
+
+<hr /><h3 id="basic">Basic Information</h3>Aurora is a 24-bit little-endian architecture. There are 16 registers that store 24-bit values. Bytes of memory are addressed with 24-bit numbers, giving a maximum of 16 MiB of addressable memory.
+
+The 16 registers are split into one Program Counter (reg15), one Program Status (reg14), four Reserved registers (reg10 to 13 inclusive) and ten General-Purpose registers (reg0 to 9 inclusive). Currently, there are no floating-point registers nor support for floating-point math operations. However, the 4 reserved registers could be used in the future for such a purpose.
+
+<hr /><h3 id="instructions">Instructions</h3>Aurora's instructions are 16 bits, with the exception of a special 32-bit instruction.
+
+An important thing to note is that instructions are byte-aligned.
+
+<table>
+    <tr>
+        <th>00</th>
+        <th>01</th>
+        <th>02</th>
+        <th>03</th>
+        <th>04</th>
+        <th>05</th>
+        <th>06</th>
+        <th>07</th>
+        <th>08</th>
+        <th>09</th>
+        <th>10</th>
+        <th>11</th>
+        <th>12</th>
+        <th>13</th>
+        <th>14</th>
+        <th>15</th>
+        <th>Comments</th>
+    </tr>
+    <tr>
+        <td colspan="4">0x0</td>
+        <td colspan="4">0x0</td>
+        <td colspan="4">N/A</td>
+        <td colspan="4">N/A</td>
+        <td>No-op (instruction is parsed as an 8-bit instruction)</td>
+    </tr>
+    <tr>
+        <td colspan="4">0x1</td>
+        <td colspan="4">N</td>
+        <td colspan="4">RegA</td>
+        <td colspan="4">RegB</td>
+        <td>copy N bytes (N_max = 3) starting from the memory address contained in register "a" to the register "b"</td>
+    </tr>
+    <tr>
+        <td colspan="4">0x2</td>
+        <td colspan="4">N</td>
+        <td colspan="4">RegA</td>
+        <td colspan="4">RegB</td>
+        <td>copy N byte value (N_max = 3) of register "a" to the area of memory specified by the memory address contained in register "b"</td>
+    </tr>
+    <tr>
+        <td colspan="4">0x3</td>
+        <td colspan="4">N</td>
+        <td colspan="4">RegA</td>
+        <td colspan="4">RegB</td>
+        <td>copy N byte value (N_max = 3) of register "a" to register "b"</td>
+    </tr>
+    <tr>
+        <td colspan="4">0x4</td>
+        <td colspan="4">N</td>
+        <td colspan="4">RegA</td>
+        <td colspan="4">RegB</td>
+        <td>Compare the N-byte values (N_max = 3) of registers a and b.</td>
+    </tr>
+    <tr>
+        <td colspan="4">0x5</td>
+        <td colspan="4">Condition</td>
+        <td colspan="4">RegA</td>
+        <td colspan="4">Pad</td>
+        <td>Jump to memory address in RegA based on condition</td>
+    </tr>
+    <tr>
+        <td colspan="4">0x6</td>
+        <td colspan="4">Specifier</td>
+        <td colspan="4">RegA</td>
+        <td colspan="4">RegB</td>
+        <td>Perform integer math on RegA and RegB and store the result in RegA</td>
+    </tr>
+    <tr>
+        <td colspan="4">0xE</td>
+        <td colspan="12">Extension code</td>
+        <td>Call extension</td>
+    </tr>
+</table>
+</pre>
+A few additional notes about instructions:
+<ul>
+    <li>When copying 1 or 2 bytes from a register, the LSB is copied first.</li>
+    <li>Conditions available are
+        <ul>
+            <li>0x0 - Unconditional</li>
+            <li>0x1 - Equal</li>
+            <li>0x2 - Greater than</li>
+            <li>0x4 - Less than</li>
+            <li>0x3 - Greater than or equal to</li>
+            <li>0x5 - Less than or equal to</li>
+            <li>0xF - not equal</li>
+        </ul>
+    </li>
+    <li>Specifiers available for mathematical operations are
+        <ul>
+            <li>0x0 - Add</li>
+            <li>0x1 - Subtract</li>
+            <li>0x2 - Multiply</li>
+            <li>0x3 - Divide (RegA / RegB)</li>
+            <li>0x4 - Remainder (RegA % RegB)</li>
+            <li>0x5 - Bitshift left (RegA << RegB)</li>
+            <li>0x6 - Bitshift right (RegA >> RegB)</li>
+            <li>0x7 - Bitwise OR (RegA | RegB)</li>
+            <li>0x8 - Bitwise AND (RegA & RegB)</li>
+            <li>0x9 - Bitwise XOR (RegA ^ RegB)</li>
+            <li>0xA - Bitwise NOT (!RegA), RegB is ignored</li>
+        </ul>
+    </li>
+</ul>
+<pre><h4 id="instructions-special">Special instructions</h4>Special instructions - those with a hexadecimal representation that starts with a 0 or F - range in size and purpose. They all have special uses.
+
+The 32-bit instruction:
+
+<table>
+    <tr>
+        <th>00</th>
+        <th>01</th>
+        <th>02</th>
+        <th>03</th>
+        <th>04</th>
+        <th>05</th>
+        <th>06</th>
+        <th>07</th>
+        <th>08</th>
+        <th>09</th>
+        <th>10</th>
+        <th>11</th>
+        <th>12</th>
+        <th>13</th>
+        <th>14</th>
+        <th>15</th>
+        <th>16</th>
+        <th>17</th>
+        <th>18</th>
+        <th>19</th>
+        <th>20</th>
+        <th>21</th>
+        <th>22</th>
+        <th>23</th>
+        <th>24</th>
+        <th>25</th>
+        <th>26</th>
+        <th>27</th>
+        <th>28</th>
+        <th>29</th>
+        <th>30</th>
+        <th>31</th>
+        <th>Comments</th>
+    </tr>
+    <tr>
+        <td colspan="4">0xF</td>
+        <td colspan="4">RegA</td>
+        <td colspan="24">Value</td>
+        <td>Store 24-bit value in RegA</td>
+    </tr>
+</table>
+<hr /><h3 id="faults">Faults and Exceptions</h3>Aurora does not have any built-in security features, so it does not trigger many faults or exceptions.
+
+The only case when an exception might be triggered is if an unknown opcode is found. In that case, that byte and the next byte are both ignored.
+
+</pre>
+</body>
+</html>
